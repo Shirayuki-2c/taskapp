@@ -54,6 +54,40 @@ body {
   margin: 0;
 }
 
+.build-version {
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  padding: 10px 16px;
+  color: #fff;
+  background: #c2410c;
+  font: 700 16px/1.4 var(--mono);
+  letter-spacing: 0.4px;
+  text-align: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.22);
+}
+
+.status-message,
+.login-error {
+  margin: 0;
+  padding: 24px 16px;
+}
+
+.login-error {
+  color: #b91c1c;
+  text-align: left;
+}
+
+.login-error p + p {
+  margin-top: 12px;
+}
+
+.login-error-url {
+  font-family: var(--mono);
+  overflow-wrap: anywhere;
+  user-select: all;
+}
+
 #root {
   width: 1126px;
   max-width: 100%;

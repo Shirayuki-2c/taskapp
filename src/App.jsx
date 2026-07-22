@@ -19,8 +19,25 @@ export default function App() {
       })
   }, [])
 
-  if (status === 'checking') return <p style={{ padding: 16 }}>登录中…</p>
-  if (status === 'notFeishu') return <p style={{ padding: 16 }}>请在飞书中打开</p>
-  if (status === 'error') return <p style={{ padding: 16, color: 'red' }}>登录失败：{errMsg}</p>
-  return <Dashboard />
+  let content
+  if (status === 'checking') content = <p className="status-message">登录中…</p>
+  if (status === 'notFeishu') content = <p className="status-message">请在飞书中打开</p>
+  if (status === 'error') {
+    content = (
+      <div className="login-error" role="alert">
+        <p>登录失败：{errMsg}</p>
+        <p>
+          当前页面：<span className="login-error-url">{window.location.href}</span>
+        </p>
+      </div>
+    )
+  }
+  if (status === 'ready') content = <Dashboard />
+
+  return (
+    <>
+      <div className="build-version">构建版本：{import.meta.env.VITE_BUILD_VERSION}</div>
+      {content}
+    </>
+  )
 }
