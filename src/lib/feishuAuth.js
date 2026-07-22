@@ -33,11 +33,5 @@ export async function login() {
     body: JSON.stringify({ code }),
   })
   if (!resp.ok) throw new Error('登录接口失败: ' + (await resp.text()))
-  const data = await resp.json()
-  sessionStorage.setItem('token', data.token)
-  return data
-}
-
-export function authHeader() {
-  return { Authorization: 'Bearer ' + sessionStorage.getItem('token') }
+  return resp.json()
 }
