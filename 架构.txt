@@ -1,0 +1,31 @@
+taskdash/
+├── api/                        # BFF：Vercel Serverless Functions（自动成为 /api/* 路由）
+│   ├── auth.js                 # POST /api/auth      免登换 token
+│   ├── bootstrap.js            # POST /api/bootstrap 建表/体检/自愈
+│   ├── tasks.js                # /api/tasks          任务增删改查（下一轮）
+│   ├── meta.js                 # /api/meta           类型与字段配置（下一轮）
+│   └── _lib/                   # 下划线开头，不会被当成路由
+│       ├── schema.js           # ★ 标准 schema，全项目唯一事实源
+│       ├── feishu.js           # 飞书 OpenAPI 封装（即 DataAdapter 的飞书实现）
+│       ├── session.js          # token 加密进 cookie / 解密
+│       └── kv.js               # Upstash 读写
+├── src/                        # 前端 React SPA
+│   ├── main.jsx
+│   ├── App.jsx                 # 环境检测 + 路由
+│   ├── lib/
+│   │   ├── feishuAuth.js       # JSSDK 免登封装
+│   │   └── api.js              # 后端请求封装（自动处理 401 重登）
+│   ├── pages/
+│   │   ├── Dashboard.jsx
+│   │   ├── TaskEditor.jsx
+│   │   ├── Settings.jsx        # 类型/字段配置 + 数据导出
+│   │   └── Guide.jsx           # 非飞书环境引导页
+│   └── components/
+│       ├── DynamicForm.jsx     # 元数据驱动的动态表单
+│       └── TaskCard.jsx
+├── index.html
+├── package.json
+├── vite.config.js
+├── vercel.json
+├── .env.local                  # 本地环境变量，必须在 .gitignore 里
+└── .gitignore
