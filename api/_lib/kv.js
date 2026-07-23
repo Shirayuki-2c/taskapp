@@ -23,11 +23,14 @@ async function rawCmd(args) {
 
 export async function kvGet(key) {
   const v = await cmd(`/get/${encodeURIComponent(key)}`);
-  return v ? JSON.parse(v) : null;
+  if (!v) return null;
+  const parsed = JSON.parse(v);
+  // 兼容旧版 kvSet 双重序列化后已写入 Redis 的 base 数据。
+  return typeof parsed === "string" ? JSON.parse(parsed) : parsed;
 }
 
 export function kvSet(key, value) {
-  return cmd(`/set/${encodeURIComponent(key)}`, JSON.stringify(value));
+  return cmd(`/set/${encodeURIComponent(key)}`, value);
 }
 
 export async function kvAcquireLock(key, token, ttlSeconds) {

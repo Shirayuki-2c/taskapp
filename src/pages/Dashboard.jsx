@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 
 const TASK_POLL_INTERVAL_MS = 2000
+const TASK_POLL_MAX_ATTEMPTS = 30
 
 async function errorMessage(response, fallback) {
   const data = await response.json().catch(() => null)
@@ -20,32 +21,38 @@ export default function Dashboard() {
     let cancelled = false
 
     async function pollTasksUntilReady() {
-      while (!cancelled) {
+      for (let attempt = 0; attempt < TASK_POLL_MAX_ATTEMPTS && !cancelled; attempt += 1) {
+        await wait(TASK_POLL_INTERVAL_MS)
+        if (cancelled) return null
+
         const response = await fetch('/api/tasks')
         if (response.status === 200) return response
         if (response.status !== 409) {
           throw new Error(await errorMessage(response, '加载任务失败'))
         }
-        await wait(TASK_POLL_INTERVAL_MS)
       }
-      return null
+
+      if (cancelled) return null
+      throw new Error('初始化超时，请刷新重试')
     }
 
     async function loadTasks() {
       try {
         let response = await fetch('/api/tasks')
 
-        // 初始化请求可能由另一个页面实例持锁；两种成功状态都等待任务接口就绪。
+        // 只有另一个请求正在初始化（202）时才轮询；同步完成（200）只重试一次。
         if (response.status === 409) {
           if (!cancelled) setIsInitializing(true)
 
           const bootstrapResponse = await fetch('/api/bootstrap', { method: 'POST' })
-          if (bootstrapResponse.status !== 200 && bootstrapResponse.status !== 202) {
+          if (bootstrapResponse.status === 202) {
+            response = await pollTasksUntilReady()
+            if (!response) return
+          } else if (bootstrapResponse.status === 200) {
+            response = await fetch('/api/tasks')
+          } else {
             throw new Error(await errorMessage(bootstrapResponse, '初始化数据失败'))
           }
-
-          response = await pollTasksUntilReady()
-          if (!response) return
         }
 
         if (!response.ok) {

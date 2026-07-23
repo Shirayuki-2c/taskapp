@@ -10,18 +10,30 @@ export default async function handler(req, res) {
   const session = readSession(req);
   if (!session) return res.status(401).json({ error: "unauthorized" });
   const { uat, openId } = session;
+  const baseKey = `base:${openId}`;
   const lockKey = `bootstrap:lock:${openId}`;
   const lockToken = crypto.randomUUID();
   let hasLock = false;
 
   try {
+    // 已完成初始化的用户直接返回，避免正常访问触碰初始化锁。
+    let cached = await kvGet(baseKey);
+    if (hasBaseBinding(cached)) {
+      return res.json({ ...cached, isNew: false });
+    }
+
     hasLock = await kvAcquireLock(lockKey, lockToken, 120);
     if (!hasLock) {
       return res.status(202).json({ ok: true, data: { status: "initializing" } });
     }
 
-    // 1. KV 直达：查门牌号并验证仍然有效
-    const cached = await kvGet(`base:${openId}`);
+    // 抢锁前后可能有另一个请求刚完成，锁内再查一次避免重复初始化。
+    cached = await kvGet(baseKey);
+    if (hasBaseBinding(cached)) {
+      return res.json({ ...cached, isNew: false });
+    }
+
+    // 1. 自愈前先检查是否有不完整的旧绑定
     let appToken = cached?.appToken || null;
     if (appToken && !(await isAlive(uat, appToken))) appToken = null;
 
@@ -42,7 +54,7 @@ export default async function handler(req, res) {
     if (isNew) await seedDefaults(uat, appToken, mapping);
 
     // 6. 回写 KV
-    await kvSet(`base:${openId}`, { appToken, ...mapping, schemaVersion: SCHEMA_VERSION });
+    await kvSet(baseKey, { appToken, ...mapping, schemaVersion: SCHEMA_VERSION });
 
     return res.json({ appToken, ...mapping, isNew });
   } catch (e) {
@@ -56,6 +68,10 @@ export default async function handler(req, res) {
       }
     }
   }
+}
+
+function hasBaseBinding(value) {
+  return Boolean(value?.appToken && value?.tableIds);
 }
 
 async function isAlive(uat, appToken) {
