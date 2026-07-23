@@ -1,8 +1,14 @@
 import { useEffect, useState } from 'react'
 
+const TASK_POLL_INTERVAL_MS = 2000
+
 async function errorMessage(response, fallback) {
   const data = await response.json().catch(() => null)
   return data?.error?.message || data?.message || `${fallback}（HTTP ${response.status}）`
+}
+
+function wait(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
 export default function Dashboard() {
@@ -13,21 +19,33 @@ export default function Dashboard() {
   useEffect(() => {
     let cancelled = false
 
+    async function pollTasksUntilReady() {
+      while (!cancelled) {
+        const response = await fetch('/api/tasks')
+        if (response.status === 200) return response
+        if (response.status !== 409) {
+          throw new Error(await errorMessage(response, '加载任务失败'))
+        }
+        await wait(TASK_POLL_INTERVAL_MS)
+      }
+      return null
+    }
+
     async function loadTasks() {
       try {
         let response = await fetch('/api/tasks')
 
-        // A single load attempt may bootstrap at most once. If the retry still
-        // returns 409, it falls through to the normal error handling below.
+        // 初始化请求可能由另一个页面实例持锁；两种成功状态都等待任务接口就绪。
         if (response.status === 409) {
           if (!cancelled) setIsInitializing(true)
 
           const bootstrapResponse = await fetch('/api/bootstrap', { method: 'POST' })
-          if (!bootstrapResponse.ok) {
+          if (bootstrapResponse.status !== 200 && bootstrapResponse.status !== 202) {
             throw new Error(await errorMessage(bootstrapResponse, '初始化数据失败'))
           }
 
-          response = await fetch('/api/tasks')
+          response = await pollTasksUntilReady()
+          if (!response) return
         }
 
         if (!response.ok) {

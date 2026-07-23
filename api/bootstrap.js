@@ -1,5 +1,6 @@
+import crypto from "node:crypto";
 import { readSession } from "./_lib/session.js";
-import { kvGet, kvSet } from "./_lib/kv.js";
+import { kvAcquireLock, kvGet, kvReleaseLock, kvSet } from "./_lib/kv.js";
 import * as fs from "./_lib/feishu.js";
 import {
   TABLES, SCHEMA_VERSION, BASE_NAME, MARKER_TABLE, DEFAULT_TYPES,
@@ -9,8 +10,16 @@ export default async function handler(req, res) {
   const session = readSession(req);
   if (!session) return res.status(401).json({ error: "unauthorized" });
   const { uat, openId } = session;
+  const lockKey = `bootstrap:lock:${openId}`;
+  const lockToken = crypto.randomUUID();
+  let hasLock = false;
 
   try {
+    hasLock = await kvAcquireLock(lockKey, lockToken, 120);
+    if (!hasLock) {
+      return res.status(202).json({ ok: true, data: { status: "initializing" } });
+    }
+
     // 1. KV 直达：查门牌号并验证仍然有效
     const cached = await kvGet(`base:${openId}`);
     let appToken = cached?.appToken || null;
@@ -35,9 +44,17 @@ export default async function handler(req, res) {
     // 6. 回写 KV
     await kvSet(`base:${openId}`, { appToken, ...mapping, schemaVersion: SCHEMA_VERSION });
 
-    res.json({ appToken, ...mapping, isNew });
+    return res.json({ appToken, ...mapping, isNew });
   } catch (e) {
-    res.status(500).json({ error: "bootstrap_failed", detail: e.message });
+    return res.status(500).json({ error: "bootstrap_failed", detail: e.message });
+  } finally {
+    if (hasLock) {
+      try {
+        await kvReleaseLock(lockKey, lockToken);
+      } catch {
+        // 锁仍会在 120 秒后自动过期，释放失败不覆盖 bootstrap 的真实结果。
+      }
+    }
   }
 }
 
