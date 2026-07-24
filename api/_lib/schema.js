@@ -1,6 +1,7 @@
 // 所有表结构、默认模板都定义在这里。改 schema 只改这个文件，
 // bootstrap 的体检逻辑会自动把变更同步到用户表（只增不删）。
 // 字段类型码（飞书多维表格）：1 文本 / 2 数字 / 3 单选 / 5 日期 / 7 复选框 / 15 超链接
+import { STATUS_VALUES } from "./constants.js";
 
 export const SCHEMA_VERSION = 1;
 export const BASE_NAME = "TaskDash-Data";
@@ -55,7 +56,7 @@ export const TABLES = {
         name: "status",
         type: 3,
         property: {
-          options: ["待开始", "进行中", "已完成", "已取消"].map((n) => ({ name: n })),
+          options: STATUS_VALUES.map((name) => ({ name })),
         },
       },
       { name: "due_date", type: 5 },

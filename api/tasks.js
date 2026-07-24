@@ -3,6 +3,7 @@
 // PATCH  /api/tasks?id=xx  更新任务
 // DELETE /api/tasks?id=xx  删除任务
 import { requireContext } from "./_lib/context.js";
+import { TASK_STATUS } from "./_lib/constants.js";
 import { TABLES } from "./_lib/schema.js";
 import {
   listAllRecords, createRecord, updateRecord, deleteRecord,
@@ -51,7 +52,7 @@ export default async function handler(req, res) {
       if (!fields.title) {
         return res.status(400).json({ ok: false, error: { code: "bad_request", message: "title 必填" } });
       }
-      fields.status ||= "待开始";
+      fields.status ||= TASK_STATUS.TODO;
       const record = await createRecord(uat, appToken, tableIds.tasks, fields);
       return res.json({ ok: true, data: toTask(record) });
     }
@@ -63,8 +64,8 @@ export default async function handler(req, res) {
 
     if (req.method === "PATCH") {
       const fields = sanitize(req.body);
-      // 状态切到"已完成"时自动盖完成时间戳，切走则清掉
-      if (fields.status === "已完成") fields.completed_at = Date.now();
+      // 状态切到完成时自动盖完成时间戳，切走则清掉
+      if (fields.status === TASK_STATUS.DONE) fields.completed_at = Date.now();
       else if (fields.status) fields.completed_at = null;
       await updateRecord(uat, appToken, tableIds.tasks, id, fields);
       return res.json({ ok: true, data: { id } });

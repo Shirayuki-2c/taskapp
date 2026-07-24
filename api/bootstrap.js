@@ -16,7 +16,7 @@ export default async function handler(req, res) {
   let hasLock = false;
 
   try {
-    // 已完成初始化的用户直接返回，避免正常访问触碰初始化锁。
+    // 已结束初始化的用户直接返回，避免正常访问触碰初始化锁。
     let cached = await kvGet(baseKey);
     if (hasBaseBinding(cached)) {
       return res.json({ ...cached, isNew: false });
