@@ -37,6 +37,12 @@ export default async function handler(req, res) {
   try {
     if (req.method === "GET") {
       const items = await listAllRecords(uat, appToken, tableIds.tasks);
+      const id = req.query.id;
+      if (id) {
+        const item = items.find((record) => record.record_id === id);
+        if (!item) return res.status(404).json({ message: "任务不存在" });
+        return res.json({ ok: true, data: toTask(item) });
+      }
       return res.json({ ok: true, data: items.map(toTask) });
     }
 
